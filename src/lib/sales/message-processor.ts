@@ -6,9 +6,9 @@ import { SalesLead, ConversationMessage } from './agents/base-agent'
 
 import { BaseAgent } from './agents/base-agent'
 import { HunterAgent } from './agents/hunter'
-// import { CloserAgent } from './agents/closer'
-// import { OnboardingAgent } from './agents/onboarding'
-// import { CSAgent } from './agents/cs'
+import { CloserAgent } from './agents/closer'
+import { OnboardingAgent } from './agents/onboarding'
+import { CSAgent } from './agents/cs'
 
 export async function processSalesMessage(
   phone: string,
@@ -68,62 +68,71 @@ export async function processSalesMessage(
       agent: lead.assigned_agent
     })
 
-    // 4. Selecionar agente pelo estágio
-    const agent = selectAgent(lead.stage)
-    if (!agent) {
-      console.log(`Agente ainda não implementado para stage: ${lead.stage}. Enviando mensagem padrão.`)
-      
-      // Resposta temporária enquanto agentes não estão implementados
-      const productConfig = getProductConfig(product)
-      const reply = product === 'occhiale' 
-        ? `Olá! Sou a ${productConfig.agentName} da ${productConfig.name}. Estou sendo configurada e logo estarei pronta para te ajudar com nossa solução! 🚀`
-        : `Oi! Sou a ${productConfig.agentName} do ${productConfig.name}. Estou em configuração e em breve vou poder te ajudar com nossa plataforma! ⚡`
-      
-      await sendWhatsAppMessage(phone, reply, product)
-      
-      await supabase.from('sales_conversations').insert({
-        lead_id: lead.id,
-        direction: 'outbound',
-        content: reply,
-        message_type: 'text',
-        agent: 'system',
-        ai_model: 'temporary_response'
-      })
-      
-      return
+    // 4. Detectar intenção e objeções para enriquecer contexto
+    const intent = classifyIntent(message)
+    const objection = detectObjection(message)
+
+    // 4.1 Atualizar metadata do lead com intenção/objeção
+    if (objection) {
+      const currentObjections: string[] = lead.objections || []
+      if (!currentObjections.includes(objection)) {
+        currentObjections.push(objection)
+        await supabase.from('sales_leads')
+          .update({ objections: currentObjections })
+          .eq('id', lead.id)
+        lead.objections = currentObjections
+      }
     }
 
-    // 5. Carregar configuração do produto
+    // 5. Selecionar agente pelo estágio
+    const agent = selectAgent(lead.stage)
+
+    // 6. Carregar configuração do produto
     const productConfig = getProductConfig(product)
 
-    // 6. Processar com IA
+    // 7. Processar com IA
     const reply = await agent.processMessage(message, {
       lead: lead as SalesLead,
       conversationHistory: (history || []) as ConversationMessage[],
       productConfig
     })
 
-    // 7. Enviar via Evolution API
+    // 8. Enviar via Evolution API
     await sendWhatsAppMessage(phone, reply, product)
 
-    // 8. Salvar resposta
+    // 9. Salvar resposta
     await supabase.from('sales_conversations').insert({
       lead_id: lead.id,
       direction: 'outbound',
       content: reply,
       message_type: 'text',
       agent: lead.assigned_agent,
-      ai_model: 'claude-3-5-sonnet-20241022'
+      ai_model: 'claude-sonnet-4-20250514'
     })
 
-    // 9. Atualizar last_contact
+    // 10. Atualizar last_contact e resetar followup se inbound
     await supabase
       .from('sales_leads')
       .update({ 
         last_contact_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        // Resetar followup count quando lead responde
+        followup_count: 0,
+        next_followup_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
       })
       .eq('id', lead.id)
+
+    // 11. Atualizar métricas diárias
+    const today = new Date().toISOString().split('T')[0]
+    await supabase.from('sales_metrics')
+      .upsert({
+        date: today,
+        product,
+        messages_in: 1,
+        messages_out: 1
+      }, {
+        onConflict: 'date,product'
+      })
 
     console.log(`Mensagem processada para ${phone} (${product}): ${reply.substring(0, 100)}...`)
 
@@ -139,26 +148,25 @@ export async function processSalesMessage(
   }
 }
 
-function selectAgent(stage: string): BaseAgent | null {
+function selectAgent(stage: string): BaseAgent {
   switch (stage) {
     case 'new':
     case 'contacted':
     case 'qualifying':
+    case 'scraped':
+    case 'nurturing':
       return new HunterAgent()
       
     case 'qualified':
     case 'presenting':
     case 'negotiating':
-      // return new CloserAgent() // TASK 3
-      return null
+      return new CloserAgent()
       
     case 'won':
-      // return new OnboardingAgent() // TASK 6
-      return null
+      return new OnboardingAgent()
       
     case 'active':
-      // return new CSAgent() // TASK 6
-      return null
+      return new CSAgent()
       
     default:
       return new HunterAgent()
@@ -188,6 +196,14 @@ export function classifyIntent(message: string): string {
   if (msg.includes('obrigad') || msg.includes('valeu') || msg.includes('tchau')) {
     return 'goodbye'
   }
+
+  if (msg.includes('cancelar') || msg.includes('parar') || msg.includes('desistir')) {
+    return 'cancel_request'
+  }
+
+  if (/^\d{1,2}$/.test(msg.trim())) {
+    return 'nps_response'
+  }
   
   return 'general_inquiry'
 }
@@ -214,6 +230,14 @@ export function detectObjection(message: string): string | null {
   
   if (msg.includes('não é pra mim') || msg.includes('não serve')) {
     return 'not_for_me'
+  }
+
+  if (msg.includes('não conheço') || msg.includes('nunca ouvi')) {
+    return 'no_trust'
+  }
+
+  if (msg.includes('complicado') || msg.includes('difícil')) {
+    return 'complexity_concern'
   }
   
   return null
