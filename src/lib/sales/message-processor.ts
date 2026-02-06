@@ -5,9 +5,7 @@ import { getProductConfig } from './product-config'
 import { SalesLead, ConversationMessage } from './agents/base-agent'
 
 import { BaseAgent } from './agents/base-agent'
-
-// Agentes serão importados após criação
-// import { HunterAgent } from './agents/hunter'
+import { HunterAgent } from './agents/hunter'
 // import { CloserAgent } from './agents/closer'
 // import { OnboardingAgent } from './agents/onboarding'
 // import { CSAgent } from './agents/cs'
@@ -142,31 +140,28 @@ export async function processSalesMessage(
 }
 
 function selectAgent(stage: string): BaseAgent | null {
-  // Por enquanto retorna null - agentes serão implementados nas próximas tasks
   switch (stage) {
     case 'new':
     case 'contacted':
     case 'qualifying':
-      // return new HunterAgent()
-      return null
+      return new HunterAgent()
       
     case 'qualified':
     case 'presenting':
     case 'negotiating':
-      // return new CloserAgent()
+      // return new CloserAgent() // TASK 3
       return null
       
     case 'won':
-      // return new OnboardingAgent()
+      // return new OnboardingAgent() // TASK 6
       return null
       
     case 'active':
-      // return new CSAgent()
+      // return new CSAgent() // TASK 6
       return null
       
     default:
-      // return new HunterAgent()
-      return null
+      return new HunterAgent()
   }
 }
 
