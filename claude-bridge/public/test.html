@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Claude Max ↔ MAVIE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Courier New', monospace; }
+        .result { max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-gray-900 text-green-400 min-h-screen p-6">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold mb-2">🤖 Teste Claude Max ↔ MAVIE</h1>
+            <p class="text-gray-400">Interface simples para testar a conexão</p>
+        </div>
+
+        <!-- Teste de Mensagem -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-bold mb-4 flex items-center">
+                💬 Enviar Mensagem para MAVIE
+            </h2>
+            <div class="space-y-4">
+                <input type="text" id="messageText" 
+                       class="w-full p-3 bg-gray-700 text-white rounded" 
+                       placeholder="Digite sua mensagem para MAVIE..."
+                       value="Olá MAVIE! Teste de conexão do Claude Max">
+                
+                <button onclick="sendMessage()" 
+                        class="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded font-bold">
+                    📤 Enviar Mensagem
+                </button>
+            </div>
+        </div>
+
+        <!-- Teste de Comando -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-bold mb-4">⚡ Executar Comando no Servidor MAVIE</h2>
+            <div class="space-y-4">
+                <select id="commandSelect" class="w-full p-3 bg-gray-700 text-white rounded">
+                    <option value="ls -la">ls -la (listar arquivos)</option>
+                    <option value="pwd">pwd (diretório atual)</option>
+                    <option value="whoami">whoami (usuário atual)</option>
+                    <option value="date">date (data/hora)</option>
+                    <option value="uptime">uptime (tempo online)</option>
+                    <option value="ps aux">ps aux (processos)</option>
+                </select>
+                
+                <button onclick="executeCommand()" 
+                        class="bg-green-600 hover:bg-green-700 px-6 py-3 rounded font-bold">
+                    🚀 Executar Comando
+                </button>
+            </div>
+        </div>
+
+        <!-- Teste de Leitura -->
+        <div class="bg-gray-800 p-6 rounded-lg mb-6">
+            <h2 class="text-xl font-bold mb-4">📖 Ler Arquivo do MAVIE</h2>
+            <div class="space-y-4">
+                <select id="fileSelect" class="w-full p-3 bg-gray-700 text-white rounded">
+                    <option value="USER.md">USER.md (perfil do usuário)</option>
+                    <option value="IDENTITY.md">IDENTITY.md (identidade MAVIE)</option>
+                    <option value="MEMORY.md">MEMORY.md (memória)</option>
+                    <option value="README.md">README.md (se existir)</option>
+                    <option value="claude-max-connection-test.md">Arquivo de teste</option>
+                </select>
+                
+                <button onclick="readFile()" 
+                        class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded font-bold">
+                    📄 Ler Arquivo
+                </button>
+            </div>
+        </div>
+
+        <!-- Resultado -->
+        <div class="bg-black p-6 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">📋 Resultado:</h2>
+            <div id="result" class="result text-sm whitespace-pre-wrap">
+                Clique em algum botão acima para testar a conexão...
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="text-center mt-6 text-sm text-gray-500">
+            <p>🔗 Conectado com MAVIE em 129.121.37.41:3002</p>
+            <p>⏰ <span id="timestamp"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // Atualizar timestamp
+        function updateTimestamp() {
+            document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        }
+        setInterval(updateTimestamp, 1000);
+        updateTimestamp();
+
+        // Função para mostrar resultado
+        function showResult(data, title = 'Resultado') {
+            const resultDiv = document.getElementById('result');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            resultDiv.innerHTML = `
+[${timestamp}] ${title}
+${JSON.stringify(data, null, 2)}
+
+${resultDiv.innerHTML}`;
+        }
+
+        // Enviar mensagem
+        async function sendMessage() {
+            const message = document.getElementById('messageText').value;
+            if (!message.trim()) {
+                alert('Digite uma mensagem!');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/claude/message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        sender: 'Claude Max (via Interface Web)',
+                        context: { interface: 'web', timestamp: new Date().toISOString() }
+                    })
+                });
+
+                const result = await response.json();
+                showResult(result, '💬 Resposta do MAVIE');
+
+            } catch (error) {
+                showResult({ error: error.message }, '❌ Erro');
+            }
+        }
+
+        // Executar comando
+        async function executeCommand() {
+            const command = document.getElementById('commandSelect').value;
+
+            try {
+                const response = await fetch('/api/claude/execute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        command: command,
+                        sender: 'Claude Max (via Interface Web)',
+                        safe: true
+                    })
+                });
+
+                const result = await response.json();
+                showResult(result, `⚡ Comando: ${command}`);
+
+            } catch (error) {
+                showResult({ error: error.message }, '❌ Erro');
+            }
+        }
+
+        // Ler arquivo
+        async function readFile() {
+            const filepath = document.getElementById('fileSelect').value;
+
+            try {
+                const response = await fetch('/api/claude/read', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        filepath: filepath,
+                        lines: 50
+                    })
+                });
+
+                const result = await response.json();
+                showResult(result, `📖 Arquivo: ${filepath}`);
+
+            } catch (error) {
+                showResult({ error: error.message }, '❌ Erro');
+            }
+        }
+    </script>
+</body>
+</html>

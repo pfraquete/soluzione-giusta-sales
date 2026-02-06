@@ -1,0 +1,5 @@
+{"timestamp":"2026-02-06T19:05:46.194Z","source":"system","action":"startup","data":{"port":3002,"timestamp":"2026-02-06T19:05:46.194Z"}}
+{"timestamp":"2026-02-06T19:06:21.109Z","source":"claude-max","action":"message","data":{"message":"Teste de conectividade MAVIE","context":{"test":true}}}
+{"timestamp":"2026-02-06T19:06:29.878Z","source":"claude-max","action":"write","data":{"filepath":"claude-max-connection-test.md","contentLength":414}}
+{"timestamp":"2026-02-06T19:10:14.632Z","source":"system","action":"startup","data":{"port":3002,"timestamp":"2026-02-06T19:10:14.631Z"}}
+{"timestamp":"2026-02-06T19:10:51.556Z","source":"claude-max","action":"message","data":{"message":"Teste simples de conectividade","context":{}}}
