@@ -20,3 +20,12 @@ export { calculateLeadScore } from './scoring'
 
 // Scraper
 export { runLeadScraper } from './scraper'
+
+// Logger
+export { logger, measurePerformance } from './logger'
+
+// Monitoring
+export { withMonitoring, getHealthStatus, recordMetric, getMetrics, checkAlerts } from './monitoring'
+
+// Rate Limiter
+export { checkRateLimit, checkMinInterval, validatePagarmeSignature, validateEvolutionWebhook } from './rate-limiter'

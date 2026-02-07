@@ -170,14 +170,14 @@ export default async function LeadsPage({
       </div>
 
       {/* Pagination */}
-      {totalPages > 1 && (
+      {(totalPages ?? 0) > 1 && (
         <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          {Array.from({ length: totalPages ?? 0 }, (_, i) => i + 1).map((p: number) => (
             <a
               key={p}
               href={`/vendas/leads?page=${p}${searchParams.product ? `&product=${searchParams.product}` : ''}${searchParams.stage ? `&stage=${searchParams.stage}` : ''}${searchParams.search ? `&search=${searchParams.search}` : ''}`}
               className={`px-3 py-1 rounded-lg text-sm ${
-                p === page ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+                p === page ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 border border-gray-700 hover:bg-gray-700'
               }`}
             >
               {p}

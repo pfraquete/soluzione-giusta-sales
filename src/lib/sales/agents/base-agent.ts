@@ -35,6 +35,13 @@ export interface SalesLead {
   utm_source: string | null
   utm_medium: string | null
   utm_campaign: string | null
+  source: string | null
+  won_at: string | null
+  onboarding_step: string | null
+  onboarding_completed_at: string | null
+  nps_score: number | null
+  nps_at: string | null
+  health_score: number | null
   created_at: string
   updated_at: string
 }

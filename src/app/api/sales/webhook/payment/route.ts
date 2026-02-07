@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sendWhatsAppMessage } from '@/lib/sales/evolution-client'
 import { getProductConfig } from '@/lib/sales/product-config'
 import crypto from 'crypto'
+import { logger } from '@/lib/sales/logger'
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
         .digest('hex')
 
       if (signature !== `sha256=${expectedSignature}`) {
-        console.warn('Webhook Pagar.me: assinatura inválida')
+        logger.warn('webhook.payment', 'Assinatura invalida')
         // Não rejeitar em dev, apenas logar
         if (process.env.NODE_ENV === 'production') {
           return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    console.log('Webhook Pagar.me recebido:', JSON.stringify(body, null, 2))
+    logger.info('webhook.payment', 'Webhook recebido', { event: body.type || body.event })
 
     const supabase = createClient()
     const event = body.type || body.event
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
     const plan = metadata.plan
 
     if (!leadId) {
-      console.warn('Webhook Pagar.me sem lead_id no metadata')
+      logger.warn('webhook.payment', 'Sem lead_id no metadata')
       return NextResponse.json({ ok: true, ignored: 'no_lead_id' })
     }
 
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (!lead) {
-      console.warn(`Lead ${leadId} não encontrado`)
+      logger.warn('webhook.payment', `Lead ${leadId} nao encontrado`)
       return NextResponse.json({ ok: true, ignored: 'lead_not_found' })
     }
 
@@ -130,7 +131,7 @@ Bem-vindo(a) ao ${config.name}! 🙏🎊`
             onConflict: 'date,product'
           })
 
-        console.log(`VENDA CONFIRMADA! Lead ${leadId} — ${plan} — R$ ${(amount / 100).toFixed(2)}`)
+        logger.info('webhook.payment', 'VENDA CONFIRMADA', { leadId, plan, amount: amount / 100 })
         break
       }
 
@@ -171,13 +172,13 @@ Bem-vindo(a) ao ${config.name}! 🙏🎊`
       }
 
       default:
-        console.log(`Evento Pagar.me não tratado: ${event}`)
+        logger.debug('webhook.payment', `Evento nao tratado: ${event}`)
     }
 
     return NextResponse.json({ ok: true, event, lead_id: leadId })
 
   } catch (error) {
-    console.error('Erro no webhook Pagar.me:', error)
+    logger.error('webhook.payment', 'Erro no webhook', { error: error instanceof Error ? error.message : String(error) })
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : 'Unknown' },
       { status: 500 }
